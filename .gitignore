@@ -1,0 +1,6 @@
+build/
+*.o
+nitcbase
+nitcbase-debug
+Disk
+*.tar.gz
