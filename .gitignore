@@ -1,6 +1,5 @@
 build/
 *.o
-nitcbase
-nitcbase-debug
-Disk
+mynitcbase/nitcbase
+mynitcbase/nitcbase-debug
 *.tar.gz
