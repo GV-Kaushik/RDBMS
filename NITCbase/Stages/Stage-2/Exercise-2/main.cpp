@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
             strcpy(attrCatRecord[1].sVal,"Batch");
              unsigned char buffer[BLOCK_SIZE];
              Disk::readBlock(buffer, attrblock);
-             char msg[]="Batch";
+             
              int start=32+attrCatHeader.numSlots+(16*attrCatHeader.numAttrs*j);
              memcpy(buffer+start,attrCatRecord,16*attrCatHeader.numAttrs);
              Disk::writeBlock(buffer,attrblock);

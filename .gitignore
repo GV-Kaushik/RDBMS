@@ -2,4 +2,8 @@ build/
 *.o
 mynitcbase/nitcbase
 mynitcbase/nitcbase-debug
+Files/*
+!Files/Batch_Execution_Files/.gitkeep
+!Files/Input_Files/.gitkeep
+!Files/Output_Files/.gitkeep
 *.tar.gz
