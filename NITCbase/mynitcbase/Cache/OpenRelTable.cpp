@@ -133,6 +133,66 @@ for (int i=RELCAT_NO_ATTRS;i<RELCAT_NO_ATTRS+ATTRCAT_NO_ATTRS;i++){
 }
 
 AttrCacheTable::attrCache[ATTRCAT_RELID]=head2;
+
+// find Students' record in the relation catalog
+int studentsSlot=-1;
+Attribute studentsRelRecord[RELCAT_NO_ATTRS];
+
+for(int slot=0;slot<20;slot++){
+    if(relCatBlock.getRecord(studentsRelRecord,slot)!=SUCCESS){
+        break;
+    }
+    if(strcmp(studentsRelRecord[0].sVal,"Students")==0){
+        studentsSlot=slot;
+        break;
+    }
+}
+
+// cache the relation catalog entry for Students
+struct RelCacheEntry studentsRelCacheEntry;
+RelCacheTable::recordToRelCatEntry(studentsRelRecord,&studentsRelCacheEntry.relCatEntry);
+studentsRelCacheEntry.recId.block=RELCAT_BLOCK;
+studentsRelCacheEntry.recId.slot=studentsSlot;
+
+RelCacheTable::relCache[studentsSlot]=(struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+*(RelCacheTable::relCache[studentsSlot])=studentsRelCacheEntry;
+
+// cache the attribute catalog entries for Students
+int numAttrs=studentsRelCacheEntry.relCatEntry.numAttrs;
+int found=0;
+int slot=0;
+
+struct AttrCacheEntry *head3=nullptr;
+struct AttrCacheEntry *tail3=nullptr;
+
+while(found<numAttrs){
+    Attribute studentsAttrRecord[ATTRCAT_NO_ATTRS];
+    if(attrCatBlock.getRecord(studentsAttrRecord,slot)!=SUCCESS){
+        break;
+    }
+    if(strcmp(studentsAttrRecord[0].sVal,"Students")==0){
+        struct AttrCacheEntry *attr=(struct AttrCacheEntry*)malloc(sizeof(AttrCacheEntry));
+        attr->next=nullptr;
+        attr->dirty=false;
+        attr->searchIndex={-1,-1};
+        attr->recId.block=ATTRCAT_BLOCK;
+        attr->recId.slot=slot;
+        AttrCacheTable::recordToAttrCatEntry(studentsAttrRecord,&attr->attrCatEntry);
+
+        if(head3==nullptr){
+            head3=attr;
+            tail3=attr;
+        }
+        else{
+            tail3->next=attr;
+            tail3=attr;
+        }
+        found++;
+    }
+    slot++;
+}
+
+AttrCacheTable::attrCache[studentsSlot]=head3;
 }
 
 OpenRelTable::~OpenRelTable() {

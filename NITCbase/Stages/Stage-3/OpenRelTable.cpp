@@ -90,6 +90,8 @@ for (int i = 0; i < RELCAT_NO_ATTRS; i++){
     attrCacheEntry->recId.block=ATTRCAT_BLOCK;
     attrCacheEntry->recId.slot=i;
     attrCacheEntry->next=nullptr;
+    attrCacheEntry->dirty=false;
+    attrCacheEntry->searchIndex={-1,-1};
 
     if(head==nullptr){
         head=attrCacheEntry;
@@ -122,6 +124,8 @@ for (int i=RELCAT_NO_ATTRS;i<RELCAT_NO_ATTRS+ATTRCAT_NO_ATTRS;i++){
     attrCacheEntry->recId.block=ATTRCAT_BLOCK;
     attrCacheEntry->recId.slot=i;
     attrCacheEntry->next=nullptr;
+    attrCacheEntry->dirty=false;
+    attrCacheEntry->searchIndex={-1,-1};
 
     if(head2==nullptr){
         head2=attrCacheEntry;

@@ -24,20 +24,22 @@ int main(int argc, char *argv[]) {
 
           printf("  %s: %s\n", attrName, attrType);
   */
- for(int i=0;i<2;i++){
-  RelCatEntry relCatBuf;
-  RelCacheTable::getRelCatEntry(i,&relCatBuf);
-  printf("Relation: %s\n",relCatBuf.relName);
-  for(int j=0;j<relCatBuf.numAttrs;j++){
-    AttrCatEntry attrCatBuf;
-    AttrCacheTable::getAttrCatEntry(i,j,&attrCatBuf);
-        std::string attrType=(attrCatBuf.attrType==NUMBER)?"NUM":"STR";
+for(int i=0;i<MAX_OPEN;i++){
+        RelCatEntry relCatBuf;
+        if(RelCacheTable::getRelCatEntry(i,&relCatBuf)!=SUCCESS){
+            continue;   // this rel-id isn't open,skip it
+        }
 
-        std::cout<<"  "<<attrCatBuf.attrName<<": "<<attrType<<"\n";
+        printf("Relation: %s\n",relCatBuf.relName);
+        for(int j=0;j<relCatBuf.numAttrs;j++){
+            AttrCatEntry attrCatBuf;
+            AttrCacheTable::getAttrCatEntry(i,j,&attrCatBuf);
+            std::string attrType=(attrCatBuf.attrType==NUMBER)?"NUM":"STR";
+            std::cout<<"  "<<attrCatBuf.attrName<<": "<<attrType<<"\n";
+        }
+        std::cout<<"\n";
+    }
 
-  }
-  std::cout<<"\n";
- }
 
   return 0;
 }
