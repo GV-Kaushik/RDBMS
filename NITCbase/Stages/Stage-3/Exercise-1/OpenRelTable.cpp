@@ -148,6 +148,8 @@ for(int slot=0;slot<20;slot++){
     }
 }
 
+
+
 // cache the relation catalog entry for Students
 struct RelCacheEntry studentsRelCacheEntry;
 RelCacheTable::recordToRelCatEntry(studentsRelRecord,&studentsRelCacheEntry.relCatEntry);
@@ -159,13 +161,13 @@ RelCacheTable::relCache[studentsSlot]=(struct RelCacheEntry*)malloc(sizeof(RelCa
 
 // cache the attribute catalog entries for Students
 int numAttrs=studentsRelCacheEntry.relCatEntry.numAttrs;
-int found=0;
+int ct=0;
 int slot=0;
 
 struct AttrCacheEntry *head3=nullptr;
 struct AttrCacheEntry *tail3=nullptr;
 
-while(found<numAttrs){
+while(ct<numAttrs){
     Attribute studentsAttrRecord[ATTRCAT_NO_ATTRS];
     if(attrCatBlock.getRecord(studentsAttrRecord,slot)!=SUCCESS){
         break;
@@ -187,7 +189,7 @@ while(found<numAttrs){
             tail3->next=attr;
             tail3=attr;
         }
-        found++;
+        ct++;
     }
     slot++;
 }

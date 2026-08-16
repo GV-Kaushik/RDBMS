@@ -24,6 +24,8 @@ OpenRelTable::OpenRelTable() {
   RelCacheTable::recordToRelCatEntry(relCatRecord, &relCacheEntry.relCatEntry);
   relCacheEntry.recId.block = RELCAT_BLOCK;
   relCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_RELCAT;
+  relCacheEntry.dirty=false;
+  relCacheEntry.searchIndex={-1,-1};
 
   // allocate this on the heap because we want it to persist outside this function
   RelCacheTable::relCache[RELCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
@@ -49,6 +51,8 @@ OpenRelTable::OpenRelTable() {
   RelCacheTable::recordToRelCatEntry(relCatRecord, &attrCacheEntry.relCatEntry);
   attrCacheEntry.recId.block = RELCAT_BLOCK;
   attrCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_ATTRCAT;
+  attrCacheEntry.dirty=false;
+  attrCacheEntry.searchIndex={-1,-1};
    RelCacheTable::relCache[ATTRCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
   *(RelCacheTable::relCache[ATTRCAT_RELID]) = attrCacheEntry;
 

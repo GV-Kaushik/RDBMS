@@ -1,7 +1,7 @@
 #include "StaticBuffer.h"
 // the declarations for this class can be found at "StaticBuffer.h"
 
-unsigned char StaticBuffer::blocks[BUFFER_CAPACITY][BLOCK_SIZE];
+unsigned char StaticBuffer::blocks[BUFFER_CAPACITY][BLOCK_SIZE];// This declaration is must
 struct BufferMetaInfo StaticBuffer::metainfo[BUFFER_CAPACITY];
 
 StaticBuffer::StaticBuffer() {
