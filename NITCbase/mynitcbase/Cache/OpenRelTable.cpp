@@ -24,6 +24,8 @@ OpenRelTable::OpenRelTable() {
   RelCacheTable::recordToRelCatEntry(relCatRecord, &relCacheEntry.relCatEntry);
   relCacheEntry.recId.block = RELCAT_BLOCK;
   relCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_RELCAT;
+  relCacheEntry.dirty=false;
+  relCacheEntry.searchIndex={-1,-1};
 
   // allocate this on the heap because we want it to persist outside this function
   RelCacheTable::relCache[RELCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
@@ -49,6 +51,8 @@ OpenRelTable::OpenRelTable() {
   RelCacheTable::recordToRelCatEntry(relCatRecord, &attrCacheEntry.relCatEntry);
   attrCacheEntry.recId.block = RELCAT_BLOCK;
   attrCacheEntry.recId.slot = RELCAT_SLOTNUM_FOR_ATTRCAT;
+  attrCacheEntry.dirty=false;
+  attrCacheEntry.searchIndex={-1,-1};
    RelCacheTable::relCache[ATTRCAT_RELID] = (struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
   *(RelCacheTable::relCache[ATTRCAT_RELID]) = attrCacheEntry;
 
@@ -90,6 +94,8 @@ for (int i = 0; i < RELCAT_NO_ATTRS; i++){
     attrCacheEntry->recId.block=ATTRCAT_BLOCK;
     attrCacheEntry->recId.slot=i;
     attrCacheEntry->next=nullptr;
+    attrCacheEntry->dirty=false;
+    attrCacheEntry->searchIndex={-1,-1};
 
     if(head==nullptr){
         head=attrCacheEntry;
@@ -122,6 +128,8 @@ for (int i=RELCAT_NO_ATTRS;i<RELCAT_NO_ATTRS+ATTRCAT_NO_ATTRS;i++){
     attrCacheEntry->recId.block=ATTRCAT_BLOCK;
     attrCacheEntry->recId.slot=i;
     attrCacheEntry->next=nullptr;
+    attrCacheEntry->dirty=false;
+    attrCacheEntry->searchIndex={-1,-1};
 
     if(head2==nullptr){
         head2=attrCacheEntry;
@@ -155,9 +163,11 @@ struct RelCacheEntry studentsRelCacheEntry;
 RelCacheTable::recordToRelCatEntry(studentsRelRecord,&studentsRelCacheEntry.relCatEntry);
 studentsRelCacheEntry.recId.block=RELCAT_BLOCK;
 studentsRelCacheEntry.recId.slot=studentsSlot;
+studentsRelCacheEntry.dirty=false;
+studentsRelCacheEntry.searchIndex={-1,-1};
 
-RelCacheTable::relCache[studentsSlot]=(struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
-*(RelCacheTable::relCache[studentsSlot])=studentsRelCacheEntry;
+RelCacheTable::relCache[2]=(struct RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+*(RelCacheTable::relCache[2])=studentsRelCacheEntry;
 
 // cache the attribute catalog entries for Students
 int numAttrs=studentsRelCacheEntry.relCatEntry.numAttrs;
@@ -194,7 +204,7 @@ while(ct<numAttrs){
     slot++;
 }
 
-AttrCacheTable::attrCache[studentsSlot]=head3;
+AttrCacheTable::attrCache[2]=head3;
 }
 
 /* This function will open a relation having name `relName`.
@@ -208,6 +218,7 @@ int OpenRelTable::getRelId(char relName[ATTR_SIZE]) {
   // if relname is ATTRCAT_RELNAME, return ATTRCAT_RELID
   if(strcmp(relName, RELCAT_RELNAME) == 0) return RELCAT_RELID;
   if(strcmp(relName, ATTRCAT_RELNAME) == 0) return ATTRCAT_RELID;
+  if(strcmp(relName, "Students") == 0) return 2;
 
   return E_RELNOTOPEN;
 }
@@ -215,19 +226,20 @@ int OpenRelTable::getRelId(char relName[ATTR_SIZE]) {
 OpenRelTable::~OpenRelTable() {
   // free all the memory that you allocated in the constructor
  
-    for(int i=0;i<2;i++){
+  for(int i=0;i<MAX_OPEN;i++){
+    if(RelCacheTable::relCache[i] != nullptr){
         free(RelCacheTable::relCache[i]);
         RelCacheTable::relCache[i]=nullptr;
     }
-
-    for(int i=0;i<2;i++){
-        AttrCacheEntry *curr=AttrCacheTable::attrCache[i];
-        while(curr!=nullptr){
-            AttrCacheEntry *next=curr->next;
-            free(curr);
-            curr=next;
-        }
-        AttrCacheTable::attrCache[i]=nullptr;
+}
+for(int i=0;i<MAX_OPEN;i++){
+    AttrCacheEntry *curr=AttrCacheTable::attrCache[i];
+    while(curr!=nullptr){
+        AttrCacheEntry *next=curr->next;
+        free(curr);
+        curr=next;
     }
+    AttrCacheTable::attrCache[i]=nullptr;
+}
 
 }

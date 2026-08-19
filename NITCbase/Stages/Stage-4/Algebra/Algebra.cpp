@@ -57,7 +57,7 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
 
     RelCatEntry relCatEntry;
     // get relCatEntry using RelCacheTable::getRelCatEntry()
-    int ret2 = RelCacheTable::getRelCatEntry(srcRelId, &relCatEntry);
+    int ret2 = RelCacheTable::getRelCatEntry(srcRelId, &relCatEntry); // checking in cache first
     if (ret2 != SUCCESS)
         return ret2;
 

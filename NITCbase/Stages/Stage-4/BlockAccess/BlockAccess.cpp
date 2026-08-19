@@ -60,7 +60,7 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
         int attrs=recBlockHeader.numAttrs;
         Attribute recBlockrecord[attrs];
         int result4=recBlock.getRecord(recBlockrecord,slot); // this shld be done actual checking slots bound?
-        ///if(result4!=SUCCESS){ slot++; continue; } // claude gave
+        ///if(result4!=SUCCESS){ slot++; continue; } // doubt
 
 
         // get slot map of the block using RecBuffer::getSlotMap() function
