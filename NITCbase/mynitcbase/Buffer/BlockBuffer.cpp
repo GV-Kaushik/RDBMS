@@ -62,28 +62,90 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
   return SUCCESS;
 }
 
-/*
-Used to load a block to the buffer and get a pointer to it.
-NOTE: this function expects the caller to allocate memory for the argument
-*/
-int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **buffPtr) {
-  // check whether the block is already present in the buffer using StaticBuffer.getBufferNum()
-  int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
+int RecBuffer::setRecord(union Attribute *rec, int slotNum) {
+    unsigned char *bufferPtr;
+    /* get the starting address of the buffer containing the block
+       using loadBlockAndGetBufferPtr(&bufferPtr). */
+    int ret=loadBlockAndGetBufferPtr(&bufferPtr);
 
-  if (bufferNum == E_BLOCKNOTINBUFFER) {
-    bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
-
-    if (bufferNum == E_OUTOFBOUND) {
-      return E_OUTOFBOUND;
+    // if loadBlockAndGetBufferPtr(&bufferPtr) != SUCCESS
+        // return the value returned by the call.
+    if(ret!=SUCCESS){
+        return ret;
     }
 
-    Disk::readBlock(StaticBuffer::blocks[bufferNum], this->blockNum);
-  }
+    /* get the header of the block using the getHeader() function */
+    struct HeadInfo head;
+    this->getHeader(&head);
 
-  // store the pointer to this buffer (blocks[bufferNum]) in *buffPtr
-  *buffPtr = StaticBuffer::blocks[bufferNum];
+    // get number of attributes in the block.
+    int attrCount=head.numAttrs;
 
-  return SUCCESS;
+    // get the number of slots in the block.
+    int slotCount=head.numSlots;
+
+    // if input slotNum is not in the permitted range return E_OUTOFBOUND.
+    if(slotNum<0 || slotNum>=slotCount){
+        return E_OUTOFBOUND;
+    }
+
+    /* offset bufferPtr to point to the beginning of the record at required
+       slot. the block contains the header, the slotmap, followed by all
+       the records. so, for example,
+       record at slot x will be at bufferPtr + HEADER_SIZE + (x*recordSize)
+       copy the record from `rec` to buffer using memcpy
+       (hint: a record will be of size ATTR_SIZE * numAttrs)
+    */
+    int recordSize=attrCount*ATTR_SIZE;
+    unsigned char *slotPointer=bufferPtr+HEADER_SIZE+slotCount+(recordSize*slotNum);
+    memcpy(slotPointer,rec,recordSize);
+
+    // update dirty bit using setDirtyBit()
+    /* (the above function call should not fail since the block is already
+       in buffer and the blockNum is valid. If the call does fail, there
+       exists some other issue in the code) */
+    StaticBuffer::setDirtyBit(this->blockNum);
+
+    // return SUCCESS
+    return SUCCESS;
+}
+
+int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **buffPtr) {
+    /* check whether the block is already present in the buffer
+       using StaticBuffer.getBufferNum() */
+    int bufferNum=StaticBuffer::getBufferNum(this->blockNum);
+
+    // if present (!=E_BLOCKNOTINBUFFER),
+    if(bufferNum!=E_BLOCKNOTINBUFFER){
+        // set the timestamp of the corresponding buffer to 0 and increment the
+        // timestamps of all other occupied buffers in BufferMetaInfo.
+        for(int bufferIndex=0;bufferIndex<BUFFER_CAPACITY;bufferIndex++){
+            if(StaticBuffer::metainfo[bufferIndex].free==false){
+                StaticBuffer::metainfo[bufferIndex].timeStamp++;
+            }
+        }
+        StaticBuffer::metainfo[bufferNum].timeStamp=0;
+    }
+    // else
+    else{
+        // get a free buffer using StaticBuffer.getFreeBuffer()
+        bufferNum=StaticBuffer::getFreeBuffer(this->blockNum);
+
+        // if the call returns E_OUTOFBOUND, return E_OUTOFBOUND here as
+        // the blockNum is invalid
+        if(bufferNum==E_OUTOFBOUND){
+            return E_OUTOFBOUND;
+        }
+
+        // Read the block into the free buffer using readBlock()
+        Disk::readBlock(StaticBuffer::blocks[bufferNum],this->blockNum);
+    }
+
+    // store the pointer to this buffer (blocks[bufferNum]) in *buffPtr
+    *buffPtr=StaticBuffer::blocks[bufferNum];
+
+    // return SUCCESS;
+    return SUCCESS;
 }
 
 /* used to get the slotmap from a record block
@@ -127,3 +189,5 @@ int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
     if(diff < 0) return -1;
     return 0;
 }
+
+

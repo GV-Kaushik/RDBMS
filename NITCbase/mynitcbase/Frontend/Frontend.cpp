@@ -26,13 +26,13 @@ int Frontend::close_table(char relname[ATTR_SIZE]) {
 
 int Frontend::alter_table_rename(char relname_from[ATTR_SIZE], char relname_to[ATTR_SIZE]) {
   // Schema::renameRel
-  return SUCCESS;
+  return Schema::renameRel(relname_from, relname_to);
 }
 
 int Frontend::alter_table_rename_column(char relname[ATTR_SIZE], char attrname_from[ATTR_SIZE],
                                         char attrname_to[ATTR_SIZE]) {
   // Schema::renameAttr
-  return SUCCESS;
+  return Schema::renameAttr(relname, attrname_from, attrname_to);
 }
 
 int Frontend::create_index(char relname[ATTR_SIZE], char attrname[ATTR_SIZE]) {
@@ -65,7 +65,7 @@ int Frontend::select_from_table_where(char relname_source[ATTR_SIZE], char relna
                                       char attribute[ATTR_SIZE], int op, char value[ATTR_SIZE]) {
   // Algebra::select
   return Algebra::select(relname_source, relname_target, attribute, op, value);
-  return SUCCESS;
+  
 }
 
 int Frontend::select_attrlist_from_table_where(char relname_source[ATTR_SIZE], char relname_target[ATTR_SIZE],
