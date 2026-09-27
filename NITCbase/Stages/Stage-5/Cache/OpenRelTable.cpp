@@ -386,7 +386,7 @@ int OpenRelTable::closeRel(int relId) {
   }
   RelCacheTable::relCache[relId] = nullptr;
   AttrCacheTable::attrCache[relId] = nullptr;
-  // update `relCache` and `attrCache` to set the entry at `relId` to nullptr
+  // update `relCache` and `attrCache` to set the entry at `relId` to nullptr  // check y?
 
   // update `tableMetaInfo` to set `relId` as a free slot
   tableMetaInfo[relId].free = true;
