@@ -532,7 +532,7 @@ int BlockAccess::deleteRelation(char relName[ATTR_SIZE]) {
         // you may use the following constants: RELCAT_NAME and ATTRCAT_NAME)
     if(strcmp(relName,RELCAT_RELNAME)==0 || strcmp(relName,ATTRCAT_RELNAME)==0){
         return E_NOTPERMITTED;
-    }
+    } // no need?
 
     /* reset the searchIndex of the relation catalog using
        RelCacheTable::resetSearchIndex() */

@@ -1,6 +1,7 @@
 #include "BlockAccess.h"
 
 #include <cstring>
+int *BlockAccess::cmpCount=nullptr;
 
 RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attribute attrVal, int op) {
     // get the previous search index of the relation relId from the relation cache
@@ -108,6 +109,7 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
         int cmpVal;  // will store the difference between the attributes
         // set cmpVal using compareAttrs()
         cmpVal=compareAttrs(recAttrVal,attrVal,attrCatBuf.attrType);
+        if(BlockAccess::cmpCount!=nullptr)(*BlockAccess::cmpCount)++;
 
         /* Next task is to check whether this record satisfies the given condition.
            It is determined based on the output of previous comparison and
@@ -150,14 +152,40 @@ int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], 
     // Declare a variable called recid to store the searched record
     RecId recId;
 
-    /* search for the record id (recid) corresponding to the attribute with
-    attribute name attrName, with value attrval and satisfying the condition op
-    using linearSearch() */
-    recId=BlockAccess::linearSearch(relId,attrName,attrVal,op);
+    /* get the attribute catalog entry from the attribute cache corresponding
+    to the relation with Id=relid and with attribute_name=attrName  */
+    AttrCatEntry attrCatEntry;                                           // NEW
+    int ret = AttrCacheTable::getAttrCatEntry(relId, attrName, &attrCatEntry); // NEW
+
+    // if this call returns an error, return the appropriate error code
+    if (ret != SUCCESS) {                                                // NEW
+        return ret;                                                      // NEW
+    }                                                                    // NEW
+
+    // get rootBlock from the attribute catalog entry
+    int rootBlock = attrCatEntry.rootBlock;                              // NEW
+
+    /* if Index does not exist for the attribute (check rootBlock == -1) */
+    if (rootBlock == -1) {                                               // NEW
+
+        /* search for the record id (recid) corresponding to the attribute with
+        attribute name attrName, with value attrval and satisfying the condition op
+        using linearSearch() */
+        recId = BlockAccess::linearSearch(relId, attrName, attrVal, op); // (moved inside the if)
+    }                                                                    // NEW
+
+    else {                                                               // NEW
+        // (index exists for the attribute)
+
+        /* search for the record id (recid) corresponding to the attribute with
+        attribute name attrName and with value attrval and satisfying the
+        condition op using BPlusTree::bPlusSearch() */
+        recId = BPlusTree::bPlusSearch(relId, attrName, attrVal, op);    // NEW
+    }                                                                    // NEW
 
     // if there's no record satisfying the given condition (recId = {-1, -1})
     //    return E_NOTFOUND;
-    if(recId.block==-1 && recId.slot==-1){
+    if (recId.block == -1 && recId.slot == -1) {
         return E_NOTFOUND;
     }
 
@@ -166,7 +194,7 @@ int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], 
        call the appropriate method to fetch the record
     */
     RecBuffer recBuffer(recId.block);
-    recBuffer.getRecord(record,recId.slot);
+    recBuffer.getRecord(record, recId.slot);
 
     return SUCCESS;
 }

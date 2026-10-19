@@ -24,6 +24,7 @@ int StaticBuffer::getFreeBuffer(int blockNum) {
     return E_OUTOFBOUND;
   }
   int allocatedBuffer;
+ 
 
   // iterate through all the blocks in the StaticBuffer
   // find the first free block in the buffer (check metainfo)

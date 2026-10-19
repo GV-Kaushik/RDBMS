@@ -44,6 +44,21 @@ RecBuffer::RecBuffer() : BlockBuffer('R'){}
 // calls the parent class constructor
 RecBuffer::RecBuffer(int blockNum) : BlockBuffer::BlockBuffer(blockNum) {}
 
+IndBuffer::IndBuffer(char blockType):BlockBuffer(blockType){}
+// call the corresponding parent constructor
+IndBuffer::IndBuffer(int blockNum):BlockBuffer(blockNum){}
+// call the corresponding parent constructor
+IndInternal::IndInternal():IndBuffer('I'){}
+// call the corresponding parent constructor
+// 'I' used to denote IndInternal.
+IndInternal::IndInternal(int blockNum):IndBuffer(blockNum){}
+// call the corresponding parent constructor
+IndLeaf::IndLeaf():IndBuffer('L'){} // this is the way to call parent non-default constructor.
+// 'L' used to denote IndLeaf.
+IndLeaf::IndLeaf(int blockNum):IndBuffer(blockNum){}
+//this is the way to call parent non-default constructor.
+
+
 int BlockBuffer::getBlockNum(){
 
     //return corresponding block number.
@@ -432,6 +447,94 @@ int RecBuffer::setSlotMap(unsigned char *slotMap) {
 
     // return SUCCESS
     return SUCCESS;
+}
+
+
+int IndInternal::getEntry(void *ptr,int indexNum){
+    // if the indexNum is not in the valid range of [0, MAX_KEYS_INTERNAL-1]
+    //     return E_OUTOFBOUND.
+    if(indexNum<0||indexNum>=MAX_KEYS_INTERNAL){
+        return E_OUTOFBOUND;
+    }
+    unsigned char *bufferPtr;
+    /* get the starting address of the buffer containing the block
+       using loadBlockAndGetBufferPtr(&bufferPtr). */
+    int ret=loadBlockAndGetBufferPtr(&bufferPtr);
+    // if loadBlockAndGetBufferPtr(&bufferPtr) != SUCCESS
+    //     return the value returned by the call.
+    if(ret!=SUCCESS){
+        return ret;
+    }
+    /*
+    - copy the entries from the indexNum`th entry to *internalEntry
+    - make sure that each field is copied individually as in the following code
+    - the lChild and rChild fields of InternalEntry are of type int32_t
+    - int32_t is a type of int that is guaranteed to be 4 bytes across every
+      C++ implementation. sizeof(int32_t) = 4
+    */
+    /* the indexNum'th entry will begin at an offset of
+       HEADER_SIZE + (indexNum * (sizeof(int) + ATTR_SIZE) )         [why?]
+       from bufferPtr */
+    // why: the block is stored as  header | ptr0 key0 ptr1 key1 ptr2 key2 ... key99 ptr100
+    // the pointer between two keys is shared, it is rChild of entry i and lChild of entry i+1
+    // and it is stored only once. so going from one entry to the next skips just
+    // one pointer + one key = 4 + 16 = 20 bytes
+    unsigned char *entryPtr=bufferPtr+HEADER_SIZE+(indexNum*20);
+    // ptr is the address of the start of the struct InternalEntry given by the caller
+    // we cant copy the whole struct in one go, because on disk the entry is packed
+    // (lChild at 0, attrVal at 4, rChild at 20) but in memory the compiler adds padding
+    // so attrVal and rChild are at different offsets inside the struct
+    // so each field is copied separately to its own address
+    // (struct InternalEntry *)ptr -> tells the compiler the layout of the memory at ptr
+    // ->field                     -> goes to that field (gives the value stored there)
+    // &                           -> address of that field, which is where memcpy has to write
+    // entryPtr has no & because it is already an address (the source in the buffer)
+    memcpy(&(((struct InternalEntry *)ptr)->lChild),entryPtr,sizeof(int32_t));
+    memcpy(&(((struct InternalEntry *)ptr)->attrVal),entryPtr+4,sizeof(Attribute));
+    memcpy(&(((struct InternalEntry *)ptr)->rChild),entryPtr+20,sizeof(int32_t));
+    // return SUCCESS.
+    return SUCCESS;
+}
+
+
+int IndLeaf::getEntry(void *ptr,int indexNum){
+    // if the indexNum is not in the valid range of [0, MAX_KEYS_LEAF-1]
+    //     return E_OUTOFBOUND.
+    if(indexNum<0||indexNum>=MAX_KEYS_LEAF){
+        return E_OUTOFBOUND;
+    }
+    unsigned char *bufferPtr;
+    /* get the starting address of the buffer containing the block
+       using loadBlockAndGetBufferPtr(&bufferPtr). */
+    int ret=loadBlockAndGetBufferPtr(&bufferPtr);
+    // if loadBlockAndGetBufferPtr(&bufferPtr) != SUCCESS
+    //     return the value returned by the call.
+    if(ret!=SUCCESS){
+        return ret;
+    }
+    // copy the indexNum'th Index entry in buffer to memory ptr using memcpy
+    /* the indexNum'th entry will begin at an offset of
+       HEADER_SIZE + (indexNum * LEAF_ENTRY_SIZE)  from bufferPtr */
+    // why: every leaf entry is a full struct Index = attrVal(16B) + block(4B) + slot(4B) + unused(8B) = 32B
+    // nothing is shared between leaf entries, so they are just placed one after another,
+    // each LEAF_ENTRY_SIZE bytes. HEADER_SIZE skips the header and
+    // indexNum*LEAF_ENTRY_SIZE skips the entries before ours
+    unsigned char *entryPtr=bufferPtr+HEADER_SIZE+(indexNum*LEAF_ENTRY_SIZE);
+    // ptr is the address of the start of the struct Index given by the caller
+    // here we want to write the whole struct, and the start of the struct is exactly ptr
+    // so ptr is used as it is (no & needed). the disk layout is same as the struct
+    // in memory (no padding), so one memcpy of the whole entry is enough
+    memcpy((struct Index *)ptr,entryPtr,LEAF_ENTRY_SIZE);
+    // return SUCCESS
+    return SUCCESS;
+}
+
+// ---------- empty definitions (to avoid compilation issues, implemented in later stages) ----------
+int IndInternal::setEntry(void *ptr,int indexNum){
+    return 0;
+}
+int IndLeaf::setEntry(void *ptr,int indexNum){
+    return 0;
 }
 
 int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {

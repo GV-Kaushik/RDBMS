@@ -15,58 +15,62 @@ the arguments of the function are
 */
 
 bool isNumber(char *str); 
-int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr[ATTR_SIZE], int op, char strVal[ATTR_SIZE])
+int Algebra::select(char srcRel[ATTR_SIZE],char targetRel[ATTR_SIZE],char attr[ATTR_SIZE],int op,char strVal[ATTR_SIZE])
 {
-    int srcRelId = OpenRelTable::getRelId(srcRel); // we'll implement this later
-    if (srcRelId == E_RELNOTOPEN)
+    // get the srcRel's rel-id (let it be srcRelid), using OpenRelTable::getRelId()
+    int srcRelId=OpenRelTable::getRelId(srcRel);
+    // if srcRel is not open in open relation table, return E_RELNOTOPEN
+    if(srcRelId==E_RELNOTOPEN)
     {
         return E_RELNOTOPEN;
     }
-
+    // get the attr-cat entry for attr, using AttrCacheTable::getAttrCatEntry()
     AttrCatEntry attrCatEntry;
-    // get the attribute catalog entry for attr, using AttrCacheTable::getAttrcatEntry()
-    int ret = AttrCacheTable::getAttrCatEntry(srcRelId, attr, &attrCatEntry);
-    if (ret != SUCCESS)
+    int ret=AttrCacheTable::getAttrCatEntry(srcRelId,attr,&attrCatEntry);
+    // if getAttrcatEntry() call fails return E_ATTRNOTEXIST
+    if(ret!=SUCCESS)
         return E_ATTRNOTEXIST;
-    //    return E_ATTRNOTEXIST if it returns the error
-
-    /*** Convert strVal (string) to an attribute of data type NUMBER or STRING ***/
-    int type = attrCatEntry.attrType;
+    /*** Convert strVal to an attribute of data type NUMBER or STRING ***/
     Attribute attrVal;
-    if (type == NUMBER)
+    int type=attrCatEntry.attrType;
+    if(type==NUMBER)
     {
-        if (isNumber(strVal))
-        { // the isNumber() function is implemented below
-            attrVal.nVal = atof(strVal);
+        // if the input argument strVal can be converted to a number
+        // (check this using isNumber() function)
+        if(isNumber(strVal))
+        {
+            // convert strVal to double and store it at attrVal.nVal using atof()
+            attrVal.nVal=atof(strVal);
         }
+        // else
         else
         {
             return E_ATTRTYPEMISMATCH;
         }
     }
-    else if (type == STRING)
+    else if(type==STRING)
     {
-        strcpy(attrVal.sVal, strVal);
+        // copy strVal to attrVal.sVal
+        strcpy(attrVal.sVal,strVal);
     }
-
-    /*** Selecting records from the source relation ***/
-
-    // Before calling the search function, reset the search to start from the first hit
-    // using RelCacheTable::resetSearchIndex()
-    RelCacheTable::resetSearchIndex(srcRelId);
-
+    // get RelcatEntry of srcRel using RelCacheTable::getRelCatEntry()
     RelCatEntry relCatEntry;
-    // get relCatEntry using RelCacheTable::getRelCatEntry()
-    int ret2 = RelCacheTable::getRelCatEntry(srcRelId, &relCatEntry);
-    if (ret2 != SUCCESS)
+    int ret2=RelCacheTable::getRelCatEntry(srcRelId,&relCatEntry);
+    if(ret2!=SUCCESS)
         return ret2;
-
-          // newly added (replaces the old printf header + row printing code)
     /*** Creating and opening the target relation ***/
-    int src_nAttrs=relCatEntry.numAttrs;
+    // Prepare arguments for createRel() in the following way:
+    int src_nAttrs=relCatEntry.numAttrs; // the no. of attributes present in src relation
+    /* let attr_names[src_nAttrs][ATTR_SIZE] be a 2D array of type char
+        (will store the attribute names of rel). */
     char attr_names[src_nAttrs][ATTR_SIZE];
+    // let attr_types[src_nAttrs] be an array of type int
     int attr_types[src_nAttrs];
-
+    /*iterate through 0 to src_nAttrs-1 :
+        get the i'th attribute's AttrCatEntry using AttrCacheTable::getAttrCatEntry()
+        fill the attr_names, attr_types arrays that we declared with the entries
+        of corresponding attributes
+    */
     for(int i=0;i<src_nAttrs;i++)
     {
         AttrCatEntry entry;
@@ -74,41 +78,68 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
         strcpy(attr_names[i],entry.attrName);
         attr_types[i]=entry.attrType;
     }
-
-    // newly added
+    /* Create the relation for target relation by calling Schema::createRel()
+       by providing appropriate arguments */
     ret=Schema::createRel(targetRel,src_nAttrs,attr_names,attr_types);
+    // if the createRel returns an error code, then return that value.
     if(ret!=SUCCESS)
         return ret;
-
-   
-    // newly added
+    /* Open the newly created target relation by calling OpenRelTable::openRel()
+       method and store the target relid */
     int targetRelId=OpenRelTable::openRel(targetRel);
-    if(targetRelId<0 || targetRelId>=MAX_OPEN)
+    /* If opening fails, delete the target relation by calling Schema::deleteRel()
+       and return the error value returned from openRel() */
+    if(targetRelId<0||targetRelId>=MAX_OPEN)
     {
         Schema::deleteRel(targetRel);
         return targetRelId;
     }
-
-        // already implemented before
+    /*** Selecting and inserting records into the target relation ***/
+    /* Before calling the search function, reset the search to start from the
+       first using RelCacheTable::resetSearchIndex() */
     Attribute record[src_nAttrs];
+    /*
+        The BlockAccess::search() function can either do a linearSearch or
+        a B+ tree search. Hence, reset the search index of the relation in the
+        relation cache using RelCacheTable::resetSearchIndex().
+        Also, reset the search index in the attribute cache for the select
+        condition attribute with name given by the argument `attr`. Use
+        AttrCacheTable::resetSearchIndex().
+        Both these calls are necessary to ensure that search begins from the
+        first record.
+    */
+    RelCacheTable::resetSearchIndex(srcRelId);
+    AttrCacheTable::resetSearchIndex(srcRelId,attr);
+    // read every record that satisfies the condition by repeatedly calling
+    // BlockAccess::search() until there are no more records to be read
 
-    // newly added (search() fills record itself, so no RecBuffer/getRecord needed here)
-    while (BlockAccess::search(srcRelId, record, attr, attrVal, op) == SUCCESS)
+    int numComparisons=0;
+    BlockAccess::cmpCount=&numComparisons;
+    while(BlockAccess::search(srcRelId,record,attr,attrVal,op)==SUCCESS)
     {
-        // newly added (insert into target instead of printing)
+        // ret = BlockAccess::insert(targetRelId, record);
         ret=BlockAccess::insert(targetRelId,record);
+        // if (insert fails) {
+        //     close the targetrel(by calling Schema::closeRel(targetrel))
+        //     delete targetrel (by calling Schema::deleteRel(targetrel))
+        //     return ret;
+        // }
         if(ret!=SUCCESS)
         {
+            BlockAccess::cmpCount=nullptr;
             Schema::closeRel(targetRel);
             Schema::deleteRel(targetRel);
             return ret;
         }
     }
 
-    // newly added
+    // Close the targetRel by calling closeRel() method of schema layer
+     BlockAccess::cmpCount=nullptr;
+   printf("Number of comparisons: %d\n",numComparisons);
     Schema::closeRel(targetRel);
+   
+    // return SUCCESS.
     return SUCCESS;
-
 }
 int Algebra::insert(char relName[ATTR_SIZE], int nAttrs, char record[][ATTR_SIZE]){
     // if relName is equal to "RELATIONCAT" or "ATTRIBUTECAT"
